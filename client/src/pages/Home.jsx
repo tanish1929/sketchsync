@@ -1,11 +1,19 @@
 import { useState, useEffect } from "react";
 import { socket } from "../socket/socket";
+import { useNavigate } from "react-router-dom";
 
 function Home() {
   const [name, setName] = useState("");
   const [roomId, setRoomId] = useState("");
 
+  const navigate = useNavigate();
+
   const createRoom = () => {
+    if (!name.trim()) {
+      alert("Please enter your name");
+      return;
+    }
+
     socket.emit("create_room", {
       name,
     });
@@ -14,12 +22,15 @@ function Home() {
   useEffect(() => {
     socket.on("room_created", (data) => {
       setRoomId(data.roomId);
+
+      // Navigate to room page
+      navigate(`/room/${data.roomId}`);
     });
 
     return () => {
       socket.off("room_created");
     };
-  }, []);
+  }, [navigate]);
 
   return (
     <div>
@@ -29,16 +40,18 @@ function Home() {
         type="text"
         placeholder="Enter Name"
         value={name}
-        onChange={(e) =>
-          setName(e.target.value)
-        }
+        onChange={(e) => setName(e.target.value)}
       />
 
       <button onClick={createRoom}>
         Create Room
       </button>
 
-      <h2>{roomId}</h2>
+      {roomId && (
+        <h2>
+          Room ID: {roomId}
+        </h2>
+      )}
     </div>
   );
 }
