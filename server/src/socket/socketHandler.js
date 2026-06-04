@@ -8,6 +8,7 @@ module.exports = (io) => {
   io.on("connection", (socket) => {
     console.log("User Connected:", socket.id);
 
+    // Create Room
     socket.on("create_room", ({ name }) => {
       const roomId = uuidv4().slice(0, 6);
 
@@ -29,16 +30,16 @@ module.exports = (io) => {
         room,
       });
 
-      console.log('Room Created: ${roomId}');
+      console.log(`Room Created: ${roomId}`);
     });
 
+    // Join Room
     socket.on("join_room", ({ roomId, name }) => {
-
       const room = rooms[roomId];
 
       if (!room) {
         socket.emit("error_message", {
-          message: "Room not found"
+          message: "Room not found",
         });
         return;
       }
@@ -53,12 +54,17 @@ module.exports = (io) => {
       socket.join(roomId);
 
       io.to(roomId).emit("player_joined", {
-        players: room.players
+        players: room.players,
       });
 
       console.log(
-        '${name} joined room ${roomId}'
+        `${name} joined room ${roomId}`
       );
+    });
+
+    // Realtime Drawing
+    socket.on("draw", (data) => {
+      socket.broadcast.emit("draw", data);
     });
   });
 };
