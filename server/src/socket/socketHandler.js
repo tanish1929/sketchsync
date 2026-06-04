@@ -91,6 +91,9 @@ module.exports = (io) => {
         room.gameStarted = true;
         room.timeLeft = 60;
 
+        const currentDrawer =
+          room.getCurrentDrawer();
+
         io.to(roomId).emit(
           "game_started",
           {
@@ -98,6 +101,8 @@ module.exports = (io) => {
               room.currentRound,
             timeLeft:
               room.timeLeft,
+            drawer:
+              currentDrawer?.name,
           }
         );
 
@@ -117,7 +122,8 @@ module.exports = (io) => {
                 timer
               );
 
-              room.currentRound++;
+              room.nextRound();
+              room.nextDrawer();
 
               if (
                 room.currentRound >
@@ -139,6 +145,9 @@ module.exports = (io) => {
                     )
                   ];
 
+                const nextDrawer =
+                  room.getCurrentDrawer();
+
                 io.to(
                   roomId
                 ).emit(
@@ -146,6 +155,8 @@ module.exports = (io) => {
                   {
                     round:
                       room.currentRound,
+                    drawer:
+                      nextDrawer?.name,
                   }
                 );
               }

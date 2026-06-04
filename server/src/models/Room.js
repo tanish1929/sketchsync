@@ -5,17 +5,14 @@ class Room {
 
     this.players = [];
 
+    // Game State
     this.gameStarted = false;
-
-    // Game Flow
     this.currentRound = 1;
     this.maxRounds = 3;
     this.timeLeft = 60;
 
-    // Current Word
+    // Drawing Game
     this.currentWord = "";
-
-    // Current Drawer
     this.drawerIndex = 0;
   }
 
@@ -46,6 +43,14 @@ class Room {
     this.drawerIndex =
       (this.drawerIndex + 1) %
       this.players.length;
+  }
+
+  getCurrentDrawer() {
+    if (this.players.length === 0) {
+      return null;
+    }
+
+    return this.players[this.drawerIndex];
   }
 }
 
