@@ -5,6 +5,7 @@ import Canvas from "../components/Canvas";
 import Scoreboard from "../components/Scoreboard";
 import Timer from "../components/Timer";
 import DrawerInfo from "../components/DrawerInfo";
+import GameOver from "../components/GameOver";
 
 function Room() {
   const [players, setPlayers] =
@@ -25,6 +26,7 @@ function Room() {
 
   return (
     <div>
+        <GameOver />
       <h1>SketchSync</h1>
 
       <DrawerInfo />

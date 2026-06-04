@@ -1,255 +1,86 @@
-const { v4: uuidv4 } = require("uuid");
-const Room = require("../models/Room");
-const Player = require("../models/Player");
+// Start Game
+socket.on(
+  "start_game",
+  ({ roomId }) => {
+    const room = rooms[roomId];
 
-const rooms = {};
+    if (!room) return;
 
-const words = [
-  "apple",
-  "car",
-  "house",
-  "dog",
-  "tree",
-];
+    room.gameStarted = true;
+    room.timeLeft = 60;
 
-module.exports = (io) => {
-  io.on("connection", (socket) => {
-    console.log("User Connected:", socket.id);
+    const currentDrawer =
+      room.getCurrentDrawer();
 
-    // Create Room
-    socket.on("create_room", ({ name }) => {
-      const roomId = uuidv4().slice(0, 6);
-
-      const room = new Room(roomId, socket.id);
-
-      const player = new Player(
-        socket.id,
-        name
-      );
-
-      room.addPlayer(player);
-
-      room.currentWord =
-        words[
-          Math.floor(
-            Math.random() * words.length
-          )
-        ];
-
-      rooms[roomId] = room;
-
-      socket.join(roomId);
-
-      socket.emit("room_created", {
-        roomId,
-        room,
-      });
-
-      console.log(`Room Created: ${roomId}`);
-    });
-
-    // Join Room
-    socket.on("join_room", ({ roomId, name }) => {
-      const room = rooms[roomId];
-
-      if (!room) {
-        socket.emit("error_message", {
-          message: "Room not found",
-        });
-        return;
+    io.to(roomId).emit(
+      "game_started",
+      {
+        round: room.currentRound,
+        timeLeft: room.timeLeft,
+        drawer: currentDrawer?.name,
       }
+    );
 
-      const player = new Player(
-        socket.id,
-        name
-      );
-
-      room.addPlayer(player);
-
-      socket.join(roomId);
+    const timer = setInterval(() => {
+      room.timeLeft--;
 
       io.to(roomId).emit(
-        "player_joined",
-        {
-          players: room.players,
-        }
+        "timer_update",
+        room.timeLeft
       );
 
-      console.log(
-        `${name} joined room ${roomId}`
-      );
-    });
+      if (room.timeLeft <= 0) {
+        clearInterval(timer);
 
-    // Start Game
-    socket.on(
-      "start_game",
-      ({ roomId }) => {
-        const room = rooms[roomId];
-
-        if (!room) return;
-
-        room.gameStarted = true;
-        room.timeLeft = 60;
-
-        const currentDrawer =
-          room.getCurrentDrawer();
-
-        io.to(roomId).emit(
-          "game_started",
-          {
-            round:
-              room.currentRound,
-            timeLeft:
-              room.timeLeft,
-            drawer:
-              currentDrawer?.name,
-          }
-        );
-
-        const timer =
-          setInterval(() => {
-            room.timeLeft--;
-
-            io.to(roomId).emit(
-              "timer_update",
-              room.timeLeft
-            );
-
-            if (
-              room.timeLeft <= 0
-            ) {
-              clearInterval(
-                timer
-              );
-
-              room.nextRound();
-              room.nextDrawer();
-
-              if (
-                room.currentRound >
-                room.maxRounds
-              ) {
-                io.to(
-                  roomId
-                ).emit(
-                  "game_over"
-                );
-              } else {
-                room.timeLeft = 60;
-
-                room.currentWord =
-                  words[
-                    Math.floor(
-                      Math.random() *
-                        words.length
-                    )
-                  ];
-
-                const nextDrawer =
-                  room.getCurrentDrawer();
-
-                io.to(
-                  roomId
-                ).emit(
-                  "next_round",
-                  {
-                    round:
-                      room.currentRound,
-                    drawer:
-                      nextDrawer?.name,
-                  }
-                );
-              }
-            }
-          }, 1000);
-      }
-    );
-
-    // Realtime Drawing
-    socket.on("draw", (data) => {
-      socket.broadcast.emit(
-        "draw",
-        data
-      );
-    });
-
-    // Clear Canvas
-    socket.on(
-      "clear_canvas",
-      () => {
-        socket.broadcast.emit(
-          "clear_canvas"
-        );
-      }
-    );
-
-    // Word Guessing + Scoring
-    socket.on(
-      "guess_word",
-      ({
-        roomId,
-        guess,
-        playerName,
-      }) => {
-        const room =
-          rooms[roomId];
-
-        if (!room) return;
+        room.nextRound();
+        room.nextDrawer();
 
         if (
-          guess.toLowerCase() ===
-          room.currentWord.toLowerCase()
+          room.currentRound >
+          room.maxRounds
         ) {
-          const player =
-            room.players.find(
-              (p) =>
-                p.name ===
-                playerName
+          const winner =
+            room.players.reduce(
+              (best, player) =>
+                player.score >
+                best.score
+                  ? player
+                  : best,
+              room.players[0]
             );
 
-          if (player) {
-            player.addPoints(
-              10
-            );
-          }
-
           io.to(roomId).emit(
-            "score_update",
-            room.players
-          );
-
-          io.to(roomId).emit(
-            "correct_guess",
+            "game_over",
             {
-              playerName,
-              word:
-                room.currentWord,
+              winner,
+              players: room.players,
             }
           );
-
-          console.log(
-            `${playerName} guessed correctly`
-          );
         } else {
+          room.timeLeft = 60;
+
+          room.currentWord =
+            words[
+              Math.floor(
+                Math.random() *
+                  words.length
+              )
+            ];
+
+          const nextDrawer =
+            room.getCurrentDrawer();
+
           io.to(roomId).emit(
-            "chat_message",
+            "next_round",
             {
-              playerName,
-              message: guess,
+              round:
+                room.currentRound,
+              drawer:
+                nextDrawer?.name,
             }
           );
         }
       }
-    );
-
-    // Disconnect
-    socket.on(
-      "disconnect",
-      () => {
-        console.log(
-          `User Disconnected: ${socket.id}`
-        );
-      }
-    );
-  });
-};
+    }, 1000);
+  }
+);
