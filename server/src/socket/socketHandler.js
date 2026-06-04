@@ -31,5 +31,34 @@ module.exports = (io) => {
 
       console.log('Room Created: ${roomId}');
     });
+
+    socket.on("join_room", ({ roomId, name }) => {
+
+      const room = rooms[roomId];
+
+      if (!room) {
+        socket.emit("error_message", {
+          message: "Room not found"
+        });
+        return;
+      }
+
+      const player = new Player(
+        socket.id,
+        name
+      );
+
+      room.addPlayer(player);
+
+      socket.join(roomId);
+
+      io.to(roomId).emit("player_joined", {
+        players: room.players
+      });
+
+      console.log(
+        '${name} joined room ${roomId}'
+      );
+    });
   });
 };
