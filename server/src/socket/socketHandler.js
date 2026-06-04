@@ -66,5 +66,19 @@ module.exports = (io) => {
     socket.on("draw", (data) => {
       socket.broadcast.emit("draw", data);
     });
+
+    // Clear Canvas
+    socket.on("clear_canvas", () => {
+      socket.broadcast.emit(
+        "clear_canvas"
+      );
+    });
+
+    // Disconnect
+    socket.on("disconnect", () => {
+      console.log(
+        `User Disconnected: ${socket.id}`
+      );
+    });
   });
 };
