@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { socket } from "../socket/socket";
 import Canvas from "../components/Canvas";
+import Scoreboard from "../components/Scoreboard";
 
 function Room() {
   const { id: roomId } = useParams();
@@ -64,7 +65,7 @@ function Room() {
       <hr />
 
       <h2>Drawing Board</h2>
-
+ <Scoreboard />
       <Canvas />
     </div>
   );

@@ -93,7 +93,7 @@ module.exports = (io) => {
       );
     });
 
-    // Word Guessing
+    // Word Guessing + Scoring
     socket.on(
       "guess_word",
       ({ roomId, guess, playerName }) => {
@@ -105,6 +105,23 @@ module.exports = (io) => {
           guess.toLowerCase() ===
           room.currentWord.toLowerCase()
         ) {
+          const player =
+            room.players.find(
+              (p) =>
+                p.name === playerName
+            );
+
+          if (player) {
+            player.addPoints(10);
+          }
+
+          // Update leaderboard
+          io.to(roomId).emit(
+            "score_update",
+            room.players
+          );
+
+          // Correct answer
           io.to(roomId).emit(
             "correct_guess",
             {
@@ -117,6 +134,7 @@ module.exports = (io) => {
             `${playerName} guessed correctly`
           );
         } else {
+          // Normal chat message
           io.to(roomId).emit(
             "chat_message",
             {
