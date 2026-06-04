@@ -4,6 +4,14 @@ const Player = require("../models/Player");
 
 const rooms = {};
 
+const words = [
+  "apple",
+  "car",
+  "house",
+  "dog",
+  "tree",
+];
+
 module.exports = (io) => {
   io.on("connection", (socket) => {
     console.log("User Connected:", socket.id);
@@ -20,6 +28,14 @@ module.exports = (io) => {
       );
 
       room.addPlayer(player);
+
+      // Assign random word
+      room.currentWord =
+        words[
+          Math.floor(
+            Math.random() * words.length
+          )
+        ];
 
       rooms[roomId] = room;
 
@@ -64,7 +80,10 @@ module.exports = (io) => {
 
     // Realtime Drawing
     socket.on("draw", (data) => {
-      socket.broadcast.emit("draw", data);
+      socket.broadcast.emit(
+        "draw",
+        data
+      );
     });
 
     // Clear Canvas
@@ -73,6 +92,41 @@ module.exports = (io) => {
         "clear_canvas"
       );
     });
+
+    // Word Guessing
+    socket.on(
+      "guess_word",
+      ({ roomId, guess, playerName }) => {
+        const room = rooms[roomId];
+
+        if (!room) return;
+
+        if (
+          guess.toLowerCase() ===
+          room.currentWord.toLowerCase()
+        ) {
+          io.to(roomId).emit(
+            "correct_guess",
+            {
+              playerName,
+              word: room.currentWord,
+            }
+          );
+
+          console.log(
+            `${playerName} guessed correctly`
+          );
+        } else {
+          io.to(roomId).emit(
+            "chat_message",
+            {
+              playerName,
+              message: guess,
+            }
+          );
+        }
+      }
+    );
 
     // Disconnect
     socket.on("disconnect", () => {
