@@ -1,3 +1,4 @@
+const socketHandler = require("./socket/socketHandler");
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -14,6 +15,8 @@ const io = new Server(server, {
     origin: "*",
   },
 });
+
+socketHandler(io);
 
 io.on("connection", (socket) => {
   console.log("User Connected:", socket.id);
