@@ -10,19 +10,32 @@ class Game {
 
   startGame() {
     this.started = true;
+    this.timeLeft = 60;
   }
 
   nextRound() {
     this.round++;
+    this.timeLeft = 60;
   }
 
   nextDrawer(players) {
+    if (!players || players.length === 0) return;
+
     this.drawerIndex =
-      (this.drawerIndex + 1) % players.length;
+      (this.drawerIndex + 1) %
+      players.length;
   }
 
   setWord(word) {
     this.currentWord = word;
+  }
+
+  resetTimer() {
+    this.timeLeft = 60;
+  }
+
+  isGameOver() {
+    return this.round > this.maxRounds;
   }
 }
 

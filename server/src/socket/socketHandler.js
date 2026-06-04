@@ -29,7 +29,6 @@ module.exports = (io) => {
 
       room.addPlayer(player);
 
-      // Assign random word
       room.currentWord =
         words[
           Math.floor(
@@ -69,14 +68,91 @@ module.exports = (io) => {
 
       socket.join(roomId);
 
-      io.to(roomId).emit("player_joined", {
-        players: room.players,
-      });
+      io.to(roomId).emit(
+        "player_joined",
+        {
+          players: room.players,
+        }
+      );
 
       console.log(
         `${name} joined room ${roomId}`
       );
     });
+
+    // Start Game
+    socket.on(
+      "start_game",
+      ({ roomId }) => {
+        const room = rooms[roomId];
+
+        if (!room) return;
+
+        room.gameStarted = true;
+        room.timeLeft = 60;
+
+        io.to(roomId).emit(
+          "game_started",
+          {
+            round:
+              room.currentRound,
+            timeLeft:
+              room.timeLeft,
+          }
+        );
+
+        const timer =
+          setInterval(() => {
+            room.timeLeft--;
+
+            io.to(roomId).emit(
+              "timer_update",
+              room.timeLeft
+            );
+
+            if (
+              room.timeLeft <= 0
+            ) {
+              clearInterval(
+                timer
+              );
+
+              room.currentRound++;
+
+              if (
+                room.currentRound >
+                room.maxRounds
+              ) {
+                io.to(
+                  roomId
+                ).emit(
+                  "game_over"
+                );
+              } else {
+                room.timeLeft = 60;
+
+                room.currentWord =
+                  words[
+                    Math.floor(
+                      Math.random() *
+                        words.length
+                    )
+                  ];
+
+                io.to(
+                  roomId
+                ).emit(
+                  "next_round",
+                  {
+                    round:
+                      room.currentRound,
+                  }
+                );
+              }
+            }
+          }, 1000);
+      }
+    );
 
     // Realtime Drawing
     socket.on("draw", (data) => {
@@ -87,17 +163,25 @@ module.exports = (io) => {
     });
 
     // Clear Canvas
-    socket.on("clear_canvas", () => {
-      socket.broadcast.emit(
-        "clear_canvas"
-      );
-    });
+    socket.on(
+      "clear_canvas",
+      () => {
+        socket.broadcast.emit(
+          "clear_canvas"
+        );
+      }
+    );
 
     // Word Guessing + Scoring
     socket.on(
       "guess_word",
-      ({ roomId, guess, playerName }) => {
-        const room = rooms[roomId];
+      ({
+        roomId,
+        guess,
+        playerName,
+      }) => {
+        const room =
+          rooms[roomId];
 
         if (!room) return;
 
@@ -108,25 +192,27 @@ module.exports = (io) => {
           const player =
             room.players.find(
               (p) =>
-                p.name === playerName
+                p.name ===
+                playerName
             );
 
           if (player) {
-            player.addPoints(10);
+            player.addPoints(
+              10
+            );
           }
 
-          // Update leaderboard
           io.to(roomId).emit(
             "score_update",
             room.players
           );
 
-          // Correct answer
           io.to(roomId).emit(
             "correct_guess",
             {
               playerName,
-              word: room.currentWord,
+              word:
+                room.currentWord,
             }
           );
 
@@ -134,7 +220,6 @@ module.exports = (io) => {
             `${playerName} guessed correctly`
           );
         } else {
-          // Normal chat message
           io.to(roomId).emit(
             "chat_message",
             {
@@ -147,10 +232,13 @@ module.exports = (io) => {
     );
 
     // Disconnect
-    socket.on("disconnect", () => {
-      console.log(
-        `User Disconnected: ${socket.id}`
-      );
-    });
+    socket.on(
+      "disconnect",
+      () => {
+        console.log(
+          `User Disconnected: ${socket.id}`
+        );
+      }
+    );
   });
 };
