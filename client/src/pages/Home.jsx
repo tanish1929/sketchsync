@@ -14,6 +14,9 @@ function Home() {
       return;
     }
 
+    // Store player name in localStorage
+    localStorage.setItem("playerName", name);
+
     socket.emit("create_room", {
       name,
     });
