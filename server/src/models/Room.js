@@ -17,13 +17,28 @@ class Room {
   }
 
   addPlayer(player) {
-    this.players.push(player);
+    // Check if player is already in the room to prevent duplicates
+    const exists = this.players.some((p) => p.id === player.id);
+    if (!exists) {
+      this.players.push(player);
+    }
   }
 
   removePlayer(playerId) {
     this.players = this.players.filter(
       (player) => player.id !== playerId
     );
+
+    // FIX 1: Host Migration
+    // If the host left and there are still players left, assign a new host!
+    if (this.hostId === playerId && this.players.length > 0) {
+      this.hostId = this.players[0].id;
+    }
+
+    // FIX 2: Prevent out-of-bounds drawer index crashes
+    if (this.drawerIndex >= this.players.length) {
+      this.drawerIndex = 0; // Reset safe index bounds
+    }
   }
 
   getPlayer(playerId) {

@@ -19,12 +19,14 @@ function Room() {
   const [drawerId, setDrawerId] = useState(null);
 
   const isDrawer = drawerId === socket.id;
+  
+  // Determine if YOU are the host. 
+  // The host is usually the first player in the list who created the room.
+  const isHost = players.length > 0 && players[0].id === socket.id;
 
   useEffect(() => {
     // Get player name from localStorage
-    const name =
-      localStorage.getItem("playerName") ||
-      "Player";
+    const name = localStorage.getItem("playerName") || "Player";
     setPlayerName(name);
 
     // Join the room
@@ -81,10 +83,9 @@ function Room() {
           {players && players.length > 0 ? (
             <ul>
               {players.map((player) => (
-                <li key={player.id}>
-                  {player.name}
-                  {player.isDrawer &&
-                    " (Drawing)"}
+                <li key={player.id} className="py-1">
+                  {player.name} {player.id === socket.id && <span className="text-gray-400 text-sm">(You)</span>}
+                  {player.isDrawer && " (Drawing)"}
                 </li>
               ))}
             </ul>
@@ -94,24 +95,32 @@ function Room() {
             </p>
           )}
 
-          {players.length > 1 && (
-            <button
-              onClick={() =>
-                socket.emit(
-                  "start_game",
-                  { roomId }
-                )
-              }
-              className="mt-4 bg-green-500 text-white p-3 rounded-lg hover:bg-green-600"
-            >
-              Start Game
-            </button>
+          {/* Render button only for the Host. Shows immediately so you can test it alone. */}
+          {isHost ? (
+            <div className="mt-4">
+              <button
+                onClick={() => socket.emit("start_game", { roomId })}
+                className="w-full bg-green-500 text-white p-3 rounded-lg font-bold hover:bg-green-600 transition"
+              >
+                Start Game 🚀
+              </button>
+              {players.length === 1 && (
+                <p className="text-xs text-amber-600 mt-1">Waiting for other players to join...</p>
+              )}
+            </div>
+          ) : (
+            players.length > 1 && (
+              <p className="mt-4 text-sm text-gray-500 italic text-center">
+                Waiting for host to start the match...
+              </p>
+            )
           )}
 
           <Scoreboard />
         </div>
 
         <div className="col-span-2 bg-white p-4 rounded shadow">
+          {/* Ensure your Canvas component is handling socket inbound sync calls */}
           <Canvas roomId={roomId} />
         </div>
       </div>

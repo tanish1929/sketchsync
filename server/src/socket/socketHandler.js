@@ -5,77 +5,67 @@ const Player = require("../models/Player");
 const rooms = {};
 
 const words = [
-  "apple",
-  "banana",
-  "car",
-  "dog",
-  "elephant",
-  "flower",
-  "guitar",
-  "house",
-  "ice",
-  "jungle",
-  "kite",
-  "lamp",
-  "mountain",
-  "notebook",
-  "orange",
-  "piano",
-  "queen",
-  "rainbow",
-  "sun",
-  "tree",
+  "apple", "banana", "car", "dog", "elephant", "flower", "guitar", "house", 
+  "ice", "jungle", "kite", "lamp", "mountain", "notebook", "orange", "piano", 
+  "queen", "rainbow", "sun", "tree"
 ];
+
+// Helper function to generate 3 random unique words
+const getRandomWords = () => {
+  const wordOptions = [];
+  const selectedIndices = new Set();
+  while (wordOptions.length < Math.min(3, words.length)) {
+    const idx = Math.floor(Math.random() * words.length);
+    if (!selectedIndices.has(idx)) {
+      wordOptions.push(words[idx]);
+      selectedIndices.add(idx);
+    }
+  }
+  return wordOptions;
+};
 
 module.exports = (io) => {
   io.on("connection", (socket) => {
     console.log("User Connected:", socket.id);
 
+    // --- CREATE ROOM ---
     socket.on("create_room", ({ name }) => {
       const roomId = uuidv4().slice(0, 6);
-
       const room = new Room(roomId, socket.id);
-
       const player = new Player(socket.id, name);
 
       room.addPlayer(player);
-
       rooms[roomId] = room;
 
       socket.join(roomId);
 
+      // Match the structure Room.jsx expects
       socket.emit("room_created", {
         roomId,
-        room,
+        room: { players: room.players }
       });
 
-      console.log(`Room Created: ${roomId}`);
+      console.log(`Room Created: ${roomId} by ${name}`);
     });
 
+    // --- JOIN ROOM ---
     socket.on("join_room", ({ roomId, name }) => {
       const room = rooms[roomId];
 
       if (!room) {
-        socket.emit("error_message", {
-          message: "Room not found",
-        });
+        socket.emit("error_message", { message: "Room not found" });
         return;
       }
-
-      // Check if player already exists
-      if (room.getPlayer(socket.id)) {
-        io.to(roomId).emit("player_joined", {
-          players: room.players,
-        });
-        return;
-      }
-
-      const player = new Player(socket.id, name);
-
-      room.addPlayer(player);
 
       socket.join(roomId);
 
+      // Add player if they aren't already registered
+      if (!room.getPlayer(socket.id)) {
+        const player = new Player(socket.id, name);
+        room.addPlayer(player);
+      }
+
+      // Sync the whole room's player list array
       io.to(roomId).emit("player_joined", {
         players: room.players,
       });
@@ -83,10 +73,9 @@ module.exports = (io) => {
       console.log(`${name} joined room ${roomId}`);
     });
 
-    // Start Game
+    // --- START GAME ---
     socket.on("start_game", ({ roomId }) => {
       const room = rooms[roomId];
-
       if (!room) return;
 
       room.gameStarted = true;
@@ -101,92 +90,71 @@ module.exports = (io) => {
         drawerId: currentDrawer?.id,
       });
 
-      // Send word options to drawer only
-      const wordOptions = [];
-      const selectedIndices = new Set();
-      while (wordOptions.length < Math.min(5, words.length)) {
-        const idx = Math.floor(Math.random() * words.length);
-        if (!selectedIndices.has(idx)) {
-          wordOptions.push(words[idx]);
-          selectedIndices.add(idx);
-        }
-      }
-
+      // Send word choices to the drawer
       io.to(roomId).emit("round_start", {
         drawerId: currentDrawer?.id,
-        wordOptions,
+        wordOptions: getRandomWords(),
         drawTime: 60,
       });
     });
 
-    // Handle Word Choice by Drawer
+    // --- WORD CHOSEN ---
     socket.on("word_chosen", ({ roomId, word, playerName }) => {
       const room = rooms[roomId];
-
       if (!room) return;
+
+      // Safety check: clear any running timer before starting a new one
+      if (room.gameTimer) {
+        clearInterval(room.gameTimer);
+      }
 
       room.currentWord = word.toLowerCase();
 
-      // Send word hint to all players (except drawer sees blank too)
+      // Build hidden word string hint
       const hint = room.currentWord
         .split("")
-        .map(() => "_")
+        .map((char) => (char === " " ? " " : "_"))
         .join(" ");
 
-      io.to(roomId).emit("word_hint", {
-        hint,
-      });
+      io.to(roomId).emit("word_hint", { hint });
 
       io.to(roomId).emit("chat_message", {
         playerName: "System",
         message: `${playerName} has chosen a word. Start guessing!`,
       });
 
-      // Start timer after word is chosen
-      let gameTimer = null;
       let roundTimeLeft = 60;
 
-      gameTimer = setInterval(() => {
+      room.gameTimer = setInterval(() => {
         roundTimeLeft--;
-
         io.to(roomId).emit("timer_update", roundTimeLeft);
 
         if (roundTimeLeft <= 0) {
-          clearInterval(gameTimer);
+          clearInterval(room.gameTimer);
 
-          // Round ended - show word and scores
           io.to(roomId).emit("round_end", {
             word: room.currentWord,
-            scores: room.players.map((p) => ({
-              name: p.name,
-              score: p.score,
-            })),
+            scores: room.players.map((p) => ({ name: p.name, score: p.score })),
           });
 
           room.nextRound();
           room.nextDrawer();
 
+          // Check if match is finished
           if (room.currentRound > room.maxRounds) {
             const winner = room.players.reduce(
-              (best, player) =>
-                player.score > best.score ? player : best,
+              (best, player) => (player.score > best.score ? player : best),
               room.players[0]
             );
 
             io.to(roomId).emit("game_over", {
-              winner: {
-                name: winner.name,
-                score: winner.score,
-              },
-              leaderboard: room.players
+              winner: { name: winner.name, score: winner.score },
+              leaderboard: [...room.players]
                 .sort((a, b) => b.score - a.score)
-                .map((p) => ({
-                  name: p.name,
-                  score: p.score,
-                })),
+                .map((p) => ({ name: p.name, score: p.score })),
             });
           } else {
-            // Start next round
+            // Setup Next Round
             const nextDrawer = room.getCurrentDrawer();
 
             io.to(roomId).emit("game_started", {
@@ -195,49 +163,35 @@ module.exports = (io) => {
               drawerId: nextDrawer?.id,
             });
 
-            // Send word options to next drawer
-            const wordOptions = [];
-            const selectedIndices = new Set();
-            while (wordOptions.length < Math.min(5, words.length)) {
-              const idx = Math.floor(Math.random() * words.length);
-              if (!selectedIndices.has(idx)) {
-                wordOptions.push(words[idx]);
-                selectedIndices.add(idx);
-              }
-            }
-
-            socket.to(roomId).emit("round_start", {
+            io.to(roomId).emit("round_start", {
               drawerId: nextDrawer?.id,
-              wordOptions,
+              wordOptions: getRandomWords(),
               drawTime: 60,
             });
           }
         }
       }, 1000);
-
-      // Store timer reference for cleanup if needed
-      room.gameTimer = gameTimer;
     });
+
+    // --- GUESS WORD ---
     socket.on("guess_word", ({ roomId, guess, playerName }) => {
       const room = rooms[roomId];
+      if (!room || !room.currentWord) return;
 
-      if (!room) return;
-
-      // Check if the guess is correct (case-insensitive)
       if (guess.toLowerCase() === room.currentWord.toLowerCase()) {
-        // Find the player who guessed correctly
         const player = room.getPlayer(socket.id);
         if (player) {
-          player.score += 10; // Award points for correct guess
+          player.score += 10; // Award points
         }
 
-        // Broadcast correct guess to all players
         io.to(roomId).emit("correct_guess", {
           playerName,
           word: room.currentWord,
         });
+
+        // Sync updated scoreboard instantly
+        io.to(roomId).emit("player_joined", { players: room.players });
       } else {
-        // Broadcast incorrect guess
         io.to(roomId).emit("chat_message", {
           playerName,
           message: `guessed "${guess}"`,
@@ -245,27 +199,38 @@ module.exports = (io) => {
       }
     });
 
-    // Handle Canvas Drawing
-    socket.on("draw", ({ roomId, x, y, color, brushSize }) => {
-      const room = rooms[roomId];
-      if (!room) return;
-
-      // Broadcast the drawing to all other players in the room
-      socket.to(roomId).emit("draw", {
-        x,
-        y,
-        color,
-        brushSize,
-      });
+    // --- CANVAS SYNCHRONIZATION EVENTS ---
+    socket.on("draw", (data) => {
+      const { roomId } = data;
+      // Broadcast coordinates seamlessly to all room subscribers (except sender)
+      socket.to(roomId).emit("draw", data);
     });
 
-    // Handle Canvas Clear
     socket.on("clear_canvas", ({ roomId }) => {
-      const room = rooms[roomId];
-      if (!room) return;
-
-      // Broadcast clear event to all other players in the room
       socket.to(roomId).emit("clear_canvas");
+    });
+
+    // --- HANDLE DISCONNECT & ROOM LEAVING ---
+    socket.on("disconnecting", () => {
+      for (const roomId of socket.rooms) {
+        const room = rooms[roomId];
+        if (room) {
+          room.removePlayer(socket.id);
+
+          // If nobody is left, scrap the room and clear timers to prevent memory leaks
+          if (room.players.length === 0) {
+            if (room.gameTimer) clearInterval(room.gameTimer);
+            delete rooms[roomId];
+            console.log(`Room ${roomId} deleted (Empty).`);
+          } else {
+            // Update the remaining players on the array structure modification
+            io.to(roomId).emit("player_joined", {
+              players: room.players,
+            });
+          }
+        }
+      }
+      console.log("User Disconnected:", socket.id);
     });
   });
 };
