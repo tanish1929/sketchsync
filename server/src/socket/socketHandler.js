@@ -21,6 +21,20 @@ socket.on(
       }
     );
 
+    // Send Word Hint
+    const hint =
+      room.currentWord
+        .split("")
+        .map(() => "_")
+        .join(" ");
+
+    io.to(roomId).emit(
+      "word_hint",
+      {
+        hint,
+      }
+    );
+
     const timer = setInterval(() => {
       room.timeLeft--;
 
@@ -66,6 +80,20 @@ socket.on(
                   words.length
               )
             ];
+
+          // New Word Hint
+          const hint =
+            room.currentWord
+              .split("")
+              .map(() => "_")
+              .join(" ");
+
+          io.to(roomId).emit(
+            "word_hint",
+            {
+              hint,
+            }
+          );
 
           const nextDrawer =
             room.getCurrentDrawer();

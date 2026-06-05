@@ -6,6 +6,9 @@ import Scoreboard from "../components/Scoreboard";
 import Timer from "../components/Timer";
 import DrawerInfo from "../components/DrawerInfo";
 import GameOver from "../components/GameOver";
+import ChatPanel from "../components/ChatPanel";
+import WordHint from "../components/WordHint";
+
 
 function Room() {
   const [players, setPlayers] =
@@ -42,6 +45,9 @@ function Room() {
       ))}
 
       <Scoreboard />
+      <WordHint />
+
+<ChatPanel />
 
       <hr />
 
