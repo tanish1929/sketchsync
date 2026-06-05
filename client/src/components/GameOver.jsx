@@ -25,21 +25,21 @@ function GameOver() {
   if (!gameOver) return null;
 
   return (
-    <div>
-      <h1>Game Over</h1>
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+    <div className="bg-white p-8 rounded-lg shadow-lg">
+      <h1 className="text-3xl font-bold mb-4">
+        Game Over
+      </h1>
 
-      <h2>
-        Winner:
-        {" "}
-        {winner?.name}
+      <h2 className="text-xl">
+        Winner: {winner?.name}
       </h2>
 
-      <h3>
-        Score:
-        {" "}
-        {winner?.score}
+      <h3 className="text-lg">
+        Score: {winner?.score}
       </h3>
     </div>
+  </div>
   );
 }
 

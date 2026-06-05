@@ -9,7 +9,6 @@ import GameOver from "../components/GameOver";
 import ChatPanel from "../components/ChatPanel";
 import WordHint from "../components/WordHint";
 
-
 function Room() {
   const [players, setPlayers] =
     useState([]);
@@ -28,32 +27,40 @@ function Room() {
   }, []);
 
   return (
-    <div>
-        <GameOver />
-      <h1>SketchSync</h1>
+    <div className="min-h-screen bg-gray-100 p-6">
+      <GameOver />
 
-      <DrawerInfo />
+      <h1 className="text-4xl font-bold mb-6">
+        SketchSync
+      </h1>
 
-      <Timer />
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-white p-4 rounded shadow">
+          <DrawerInfo />
+          <Timer />
+          <WordHint />
 
-      <h2>Players</h2>
+          <h2 className="text-xl font-semibold mt-4 mb-2">
+            Players
+          </h2>
 
-      {players.map((player) => (
-        <p key={player.id}>
-          {player.name}
-        </p>
-      ))}
+          {players.map((player) => (
+            <p key={player.id}>
+              {player.name}
+            </p>
+          ))}
 
-      <Scoreboard />
-      <WordHint />
+          <Scoreboard />
+        </div>
 
-<ChatPanel />
+        <div className="col-span-2 bg-white p-4 rounded shadow">
+          <Canvas />
+        </div>
+      </div>
 
-      <hr />
-
-      <h2>Drawing Board</h2>
-
-      <Canvas />
+      <div className="mt-4 bg-white p-4 rounded shadow">
+        <ChatPanel />
+      </div>
     </div>
   );
 }

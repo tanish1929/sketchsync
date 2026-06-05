@@ -14,8 +14,10 @@ function Home() {
       return;
     }
 
-    // Store player name in localStorage
-    localStorage.setItem("playerName", name);
+    localStorage.setItem(
+      "playerName",
+      name
+    );
 
     socket.emit("create_room", {
       name,
@@ -23,12 +25,16 @@ function Home() {
   };
 
   useEffect(() => {
-    socket.on("room_created", (data) => {
-      setRoomId(data.roomId);
+    socket.on(
+      "room_created",
+      (data) => {
+        setRoomId(data.roomId);
 
-      // Navigate to room page
-      navigate(`/room/${data.roomId}`);
-    });
+        navigate(
+          `/room/${data.roomId}`
+        );
+      }
+    );
 
     return () => {
       socket.off("room_created");
@@ -36,25 +42,35 @@ function Home() {
   }, [navigate]);
 
   return (
-    <div>
-      <h1>SketchSync</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="bg-white p-8 rounded-xl shadow-lg w-96">
+        <h1 className="text-4xl font-bold text-center mb-6">
+          SketchSync
+        </h1>
 
-      <input
-        type="text"
-        placeholder="Enter Name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
+        <input
+          type="text"
+          placeholder="Enter Your Name"
+          value={name}
+          onChange={(e) =>
+            setName(e.target.value)
+          }
+          className="w-full border border-gray-300 rounded-lg p-3 mb-4"
+        />
 
-      <button onClick={createRoom}>
-        Create Room
-      </button>
+        <button
+          onClick={createRoom}
+          className="w-full bg-blue-500 text-white p-3 rounded-lg hover:bg-blue-600"
+        >
+          Create Room
+        </button>
 
-      {roomId && (
-        <h2>
-          Room ID: {roomId}
-        </h2>
-      )}
+        {roomId && (
+          <h2 className="mt-4 text-center text-gray-700">
+            Room ID: {roomId}
+          </h2>
+        )}
+      </div>
     </div>
   );
 }
