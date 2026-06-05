@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 function Home() {
   const [name, setName] = useState("");
-  const [roomId, setRoomId] = useState("");
+  const [joinRoomId, setJoinRoomId] = useState("");
 
   const navigate = useNavigate();
 
@@ -24,12 +24,29 @@ function Home() {
     });
   };
 
+  const joinRoom = () => {
+    if (!name.trim()) {
+      alert("Please enter your name");
+      return;
+    }
+
+    if (!joinRoomId.trim()) {
+      alert("Please enter a room ID");
+      return;
+    }
+
+    localStorage.setItem(
+      "playerName",
+      name
+    );
+
+    navigate(`/room/${joinRoomId}`);
+  };
+
   useEffect(() => {
     socket.on(
       "room_created",
       (data) => {
-        setRoomId(data.roomId);
-
         navigate(
           `/room/${data.roomId}`
         );
@@ -65,11 +82,26 @@ function Home() {
           Create Room
         </button>
 
-        {roomId && (
-          <h2 className="mt-4 text-center text-gray-700">
-            Room ID: {roomId}
-          </h2>
-        )}
+        <div className="mt-6 text-center text-gray-400">
+          ─── OR ───
+        </div>
+
+        <input
+          type="text"
+          placeholder="Enter Room ID"
+          value={joinRoomId}
+          onChange={(e) =>
+            setJoinRoomId(e.target.value)
+          }
+          className="w-full border border-gray-300 rounded-lg p-3 mb-4 mt-6 focus:outline-none focus:ring-2 focus:ring-green-500"
+        />
+
+        <button
+          onClick={joinRoom}
+          className="w-full bg-green-500 text-white p-3 rounded-lg hover:bg-green-600"
+        >
+          Join Room
+        </button>
       </div>
     </div>
   );
