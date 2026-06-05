@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import { socket } from "../socket/socket";
 
-function Canvas({ roomId }) {
+function Canvas({ roomId, isDrawer }) {
   const canvasRef = useRef(null);
   const historyRef = useRef([]);
 
@@ -17,16 +17,25 @@ function Canvas({ roomId }) {
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    // Save initial state
-    historyRef.current.push(
-      canvas.toDataURL()
-    );
+    // Save initial blank state
+    historyRef.current.push(canvas.toDataURL());
 
-    socket.on("draw", ({ x, y, color, brushSize }) => {
+    // --- SOCKET INBOUND LISTENERS ---
+    
+    // Explicitly destructure isEraserPacket from incoming draw events
+    socket.on("draw", ({ x, y, color, brushSize, isEraserPacket }) => {
+      ctx.save(); // Save the current context configuration
+      
+      // Configure drawing variables dynamically based on sender parameters
+      ctx.beginPath();
+      ctx.globalCompositeOperation = isEraserPacket ? "destination-out" : "source-over";
       ctx.strokeStyle = color;
       ctx.lineWidth = brushSize;
+      
       ctx.lineTo(x, y);
       ctx.stroke();
+      
+      ctx.restore(); // Revert back to local tool settings seamlessly
     });
 
     socket.on("clear_canvas", () => {
@@ -65,23 +74,26 @@ function Canvas({ roomId }) {
     }
   };
 
+  // --- MOUSE ACTION HANDLERS ---
+
   const startDrawing = (e) => {
+    if (!isDrawer) return; // Block input if user isn't the active drawer
+
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
 
     ctx.beginPath();
+    ctx.globalCompositeOperation = isEraser ? "destination-out" : "source-over";
     ctx.strokeStyle = isEraser ? "#FFFFFF" : color;
     ctx.lineWidth = brushSize;
-    ctx.globalCompositeOperation = isEraser ? "destination-out" : "source-over";
 
     ctx.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
-
     setIsDrawing(true);
     saveHistory();
   };
 
   const draw = (e) => {
-    if (!isDrawing) return;
+    if (!isDrawing || !isDrawer) return;
 
     const x = e.nativeEvent.offsetX;
     const y = e.nativeEvent.offsetY;
@@ -92,23 +104,24 @@ function Canvas({ roomId }) {
     ctx.lineTo(x, y);
     ctx.stroke();
 
+    // Broadcast isEraserPacket state parameter to let clients set composite operations correctly
     socket.emit("draw", {
       roomId,
       x,
       y,
       color: isEraser ? "#FFFFFF" : color,
       brushSize,
+      isEraserPacket: isEraser,
     });
   };
 
   const stopDrawing = () => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    ctx.globalCompositeOperation = "source-over";
+    if (!isDrawer) return;
     setIsDrawing(false);
   };
 
   const clearCanvas = () => {
+    if (!isDrawer) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
 
@@ -119,6 +132,7 @@ function Canvas({ roomId }) {
   };
 
   const handleUndo = () => {
+    if (!isDrawer) return;
     undo();
     socket.emit("draw_undo", { roomId });
   };
@@ -129,7 +143,8 @@ function Canvas({ roomId }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 flex-wrap bg-gray-100 p-3 rounded">
+      {/* Conditionally hide or disable toolbox options if user is a guesser */}
+      <div className={`flex gap-2 flex-wrap bg-gray-100 p-3 rounded transition-opacity ${!isDrawer ? "opacity-50 pointer-events-none" : ""}`}>
         <div className="flex items-center gap-2">
           <label className="text-sm font-semibold">Color:</label>
           <input
@@ -157,9 +172,7 @@ function Canvas({ roomId }) {
         <button
           onClick={toggleEraser}
           className={`px-3 py-1 rounded font-semibold transition ${
-            isEraser
-              ? "bg-yellow-500 text-white"
-              : "bg-gray-300 hover:bg-gray-400"
+            isEraser ? "bg-yellow-500 text-white" : "bg-gray-300 hover:bg-gray-400"
           }`}
         >
           {isEraser ? "🗑️ Eraser ON" : "🗑️ Eraser"}
@@ -180,20 +193,26 @@ function Canvas({ roomId }) {
         </button>
       </div>
 
-      <canvas
-        ref={canvasRef}
-        width={800}
-        height={500}
-        style={{
-          border: "2px solid #333",
-          backgroundColor: "#FFFFFF",
-          cursor: "crosshair",
-        }}
-        onMouseDown={startDrawing}
-        onMouseMove={draw}
-        onMouseUp={stopDrawing}
-        onMouseLeave={stopDrawing}
-      />
+      <div className="relative overflow-hidden inline-block rounded" style={{ border: "2px solid #333" }}>
+        <canvas
+          ref={canvasRef}
+          width={800}
+          height={500}
+          style={{
+            backgroundColor: "#FFFFFF",
+            cursor: isDrawer ? "crosshair" : "not-allowed",
+          }}
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={stopDrawing}
+          onMouseLeave={stopDrawing}
+        />
+        {!isDrawer && (
+          <div className="absolute top-2 right-2 bg-black/70 text-white px-3 py-1 rounded text-xs font-bold tracking-wide pointer-events-none uppercase">
+            Viewing Mode
+          </div>
+        )}
+      </div>
     </div>
   );
 }

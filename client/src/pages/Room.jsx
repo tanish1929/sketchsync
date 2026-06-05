@@ -85,7 +85,7 @@ function Room() {
               {players.map((player) => (
                 <li key={player.id} className="py-1">
                   {player.name} {player.id === socket.id && <span className="text-gray-400 text-sm">(You)</span>}
-                  {player.isDrawer && " (Drawing)"}
+                  {player.id === drawerId && " (Drawing)"}
                 </li>
               ))}
             </ul>
@@ -109,7 +109,7 @@ function Room() {
               )}
             </div>
           ) : (
-            players.length > 1 && (
+            players.length > 1 && !drawerId && (
               <p className="mt-4 text-sm text-gray-500 italic text-center">
                 Waiting for host to start the match...
               </p>
@@ -120,8 +120,8 @@ function Room() {
         </div>
 
         <div className="col-span-2 bg-white p-4 rounded shadow">
-          {/* Ensure your Canvas component is handling socket inbound sync calls */}
-          <Canvas roomId={roomId} />
+          {/* CRITICAL FIX: Passing down isDrawer state utility mapping to canvas visibility context */}
+          <Canvas roomId={roomId} isDrawer={isDrawer} />
         </div>
       </div>
 
