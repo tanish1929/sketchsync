@@ -17,6 +17,7 @@ function Room() {
   const [players, setPlayers] = useState([]);
   const [playerName, setPlayerName] = useState("");
   const [drawerId, setDrawerId] = useState(null);
+  const [wordOptions, setWordOptions] = useState([]);
 
   const isDrawer = drawerId === socket.id;
   
@@ -50,10 +51,26 @@ function Room() {
       setDrawerId(data.drawerId);
     });
 
+    // Listen for word options to display in the modal
+    socket.on("round_start", (data) => {
+      if (data.drawerId === socket.id) {
+        setWordOptions(data.wordOptions);
+      } else {
+        setWordOptions([]);
+      }
+    });
+
+    // Clear word options once a word has been chosen
+    socket.on("word_hint", () => {
+      setWordOptions([]);
+    });
+
     return () => {
       socket.off("room_created");
       socket.off("player_joined");
       socket.off("game_started");
+      socket.off("round_start");
+      socket.off("word_hint");
     };
   }, [roomId]);
 
@@ -63,7 +80,8 @@ function Room() {
       <WordSelector 
         roomId={roomId} 
         playerName={playerName} 
-        isDrawer={isDrawer} 
+        isDrawer={isDrawer}
+        wordOptions={wordOptions}
       />
 
       <h1 className="text-4xl font-bold mb-6">

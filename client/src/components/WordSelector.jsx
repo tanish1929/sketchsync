@@ -1,22 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { socket } from "../socket/socket";
 
-function WordSelector({ roomId, playerName, isDrawer }) {
-  const [words, setWords] = useState([]);
+function WordSelector({ roomId, playerName, isDrawer, wordOptions = [] }) {
   const [selectedWord, setSelectedWord] = useState(null);
-
-  useEffect(() => {
-    socket.on("round_start", (data) => {
-      if (data.wordOptions) {
-        setWords(data.wordOptions);
-        setSelectedWord(null);
-      }
-    });
-
-    return () => {
-      socket.off("round_start");
-    };
-  }, []);
 
   const handleWordSelect = (word) => {
     setSelectedWord(word);
@@ -27,7 +13,7 @@ function WordSelector({ roomId, playerName, isDrawer }) {
     });
   };
 
-  if (!isDrawer || words.length === 0) {
+  if (!isDrawer || wordOptions.length === 0) {
     return null;
   }
 
@@ -38,7 +24,7 @@ function WordSelector({ roomId, playerName, isDrawer }) {
           Choose a Word to Draw
         </h2>
         <div className="grid grid-cols-1 gap-3">
-          {words.map((word, idx) => (
+          {wordOptions.map((word, idx) => (
             <button
               key={idx}
               onClick={() => handleWordSelect(word)}
