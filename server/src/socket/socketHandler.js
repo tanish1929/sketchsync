@@ -10,7 +10,7 @@ const words = [
   "queen", "rainbow", "sun", "tree"
 ];
 
-// Helper function to generate 3 random unique words
+// Help to create 3 random words
 const getRandomWords = () => {
   const wordOptions = [];
   const selectedIndices = new Set();
@@ -59,13 +59,13 @@ module.exports = (io) => {
 
       socket.join(roomId);
 
-      // Add player if they aren't already registered
+      // Add not registered players to the room 
       if (!room.getPlayer(socket.id)) {
         const player = new Player(socket.id, name);
         room.addPlayer(player);
       }
 
-      // Sync the whole room's player list array
+    
       io.to(roomId).emit("player_joined", {
         players: room.players,
       });
@@ -90,7 +90,7 @@ module.exports = (io) => {
         drawerId: currentDrawer?.id,
       });
 
-      // Send word choices to the drawer
+      // Send word 
       io.to(roomId).emit("round_start", {
         drawerId: currentDrawer?.id,
         wordOptions: getRandomWords(),
@@ -103,7 +103,7 @@ module.exports = (io) => {
       const room = rooms[roomId];
       if (!room) return;
 
-      // Safety check: clear any running timer before starting a new one
+      
       if (room.gameTimer) {
         clearInterval(room.gameTimer);
       }
@@ -189,7 +189,7 @@ module.exports = (io) => {
           word: room.currentWord,
         });
 
-        // Sync updated scoreboard instantly
+        //  update scoreboard instantly
         io.to(roomId).emit("player_joined", { players: room.players });
       } else {
         io.to(roomId).emit("chat_message", {
@@ -199,7 +199,7 @@ module.exports = (io) => {
       }
     });
 
-    // --- CANVAS SYNCHRONIZATION EVENTS ---
+    // --- CANVAS  EVENTS ---
     socket.on("draw", (data) => {
       const { roomId } = data;
       // Broadcast coordinates seamlessly to all room subscribers (except sender)
@@ -217,13 +217,14 @@ module.exports = (io) => {
         if (room) {
           room.removePlayer(socket.id);
 
-          // If nobody is left, scrap the room and clear timers to prevent memory leaks
+          // If nobody is left, close the room and clean up memory
           if (room.players.length === 0) {
             if (room.gameTimer) clearInterval(room.gameTimer);
             delete rooms[roomId];
             console.log(`Room ${roomId} deleted (Empty).`);
           } else {
-            // Update the remaining players on the array structure modification
+           
+
             io.to(roomId).emit("player_joined", {
               players: room.players,
             });

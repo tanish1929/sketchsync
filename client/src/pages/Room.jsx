@@ -20,10 +20,6 @@ function Room() {
   const [wordOptions, setWordOptions] = useState([]);
 
   const isDrawer = drawerId === socket.id;
-  
-  // Determine if YOU are the host. 
-  // The host is usually the first player in the list who created the room.
-  const isHost = players.length > 0 && players[0].id === socket.id;
 
   useEffect(() => {
     // Get player name from localStorage
@@ -113,8 +109,8 @@ function Room() {
             </p>
           )}
 
-          {/* Render button only for the Host. Shows immediately so you can test it alone. */}
-          {isHost ? (
+          {/* Render button for any player when 2+ players are in room */}
+          {players.length >= 2 && !drawerId ? (
             <div className="mt-4">
               <button
                 onClick={() => socket.emit("start_game", { roomId })}
@@ -122,17 +118,12 @@ function Room() {
               >
                 Start Game 🚀
               </button>
-              {players.length === 1 && (
-                <p className="text-xs text-amber-600 mt-1">Waiting for other players to join...</p>
-              )}
             </div>
-          ) : (
-            players.length > 1 && !drawerId && (
-              <p className="mt-4 text-sm text-gray-500 italic text-center">
-                Waiting for host to start the match...
-              </p>
-            )
-          )}
+          ) : players.length === 1 ? (
+            <div className="mt-4">
+              <p className="text-sm text-amber-600 text-center">Waiting for another player to join...</p>
+            </div>
+          ) : null}
 
           <Scoreboard />
         </div>
